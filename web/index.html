@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LLM Disagreement Analysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#eef1ee;--surface:#fff;--sunk:#f5f7f5;--ink:#1e2b2f;--mu:#5c6a6c;--rule:#d5dbd6;--rule2:#e6eae6;
+ --ac:#2e5e63;--ac-ink:#fff;--ac-soft:#e1ecec;--ok:#3a7a4f;--okbg:#e3f0e6;--wa:#b0452f;--wabg:#f7e5e0;--am:#b5852a;--ambg:#f6eedb;--sk:#9aa4a1;--wording:#8fbf9c;
+ --focus:#2e5e63;--shadow:0 1px 0 rgba(30,43,47,.04)}
+@media(prefers-color-scheme:dark){:root{--paper:#151b1d;--surface:#1c2427;--sunk:#182023;--ink:#e3e9e7;--mu:#9aa8a8;--rule:#2f3a3d;--rule2:#263033;
+ --ac:#7fb5b9;--ac-ink:#10292b;--ac-soft:#22383a;--ok:#6dbb85;--okbg:#1d3326;--wa:#e2846f;--wabg:#3d2520;--am:#d9ad55;--ambg:#3a3020;--sk:#667270;--wording:#4f8a62;--focus:#7fb5b9;--shadow:none}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font:15px/1.55 "Public Sans",system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;background:var(--paper);color:var(--ink);font-variant-numeric:tabular-nums}
+a{color:var(--ac)}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+@media(max-width:600px){.wrap{padding:0 16px}}
+
+/* masthead */
+header{padding:40px 0 28px}
+h1{margin:0;font-size:34px;line-height:1.15;font-weight:700;letter-spacing:-.015em;max-width:20ch}
+.lede{margin:10px 0 0;font-size:17px;color:var(--mu);max-width:62ch}
+.byline{margin:14px 0 0;font-size:13px;color:var(--mu)}
+@media(max-width:600px){header{padding:28px 0 20px}h1{font-size:27px}.lede{font-size:15.5px}}
+
+/* panels */
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:10px;box-shadow:var(--shadow);margin-bottom:18px}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:20px 22px;margin-bottom:18px}
+@media(max-width:600px){.card{padding:16px}}
+h2{margin:0 0 6px;font-size:17px;font-weight:650;letter-spacing:-.005em}h3{margin:18px 0 8px;font-size:14px;font-weight:650}
+.sub{color:var(--mu);font-size:14px;margin:0 0 12px;max-width:70ch}
+.note{color:var(--mu);font-size:13px}
+
+/* setup sequence: number in a gutter, a rule between steps */
+.step{display:grid;grid-template-columns:44px 1fr;gap:0 14px;padding:22px 24px;border-top:1px solid var(--rule2)}
+.step:first-child{border-top:0}
+.num{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--ac);color:var(--ac);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;margin-top:-3px}
+.step>div{min-width:0}
+@media(max-width:600px){.step{grid-template-columns:1fr;padding:18px 16px}.num{margin-bottom:8px}}
+.run-bar{display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:18px 24px;border-top:1px solid var(--rule);background:var(--sunk);border-radius:0 0 10px 10px}
+@media(max-width:600px){.run-bar{padding:16px}}
+
+/* form controls */
+.row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-top:10px}
+label{display:flex;flex-direction:column;font-size:13px;color:var(--mu);gap:5px;font-weight:500}
+input,select,textarea{font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--rule);border-radius:6px;background:var(--surface);color:var(--ink);min-width:0}
+input:hover,select:hover,textarea:hover{border-color:var(--sk)}
+textarea{width:100%;font-size:13.5px;line-height:1.5}
+select{padding-right:28px}
+.btn,.sm{font:inherit;cursor:pointer;border-radius:6px}
+.btn{background:var(--ac);color:var(--ac-ink);border:1px solid var(--ac);padding:11px 22px;font-size:15px;font-weight:600}
+.btn:hover{filter:brightness(1.08)}.btn:disabled{opacity:.55;cursor:progress}
+.sm{padding:6px 12px;font-size:13px;border:1px solid var(--rule);background:var(--surface);color:var(--ink)}
+.sm:hover{border-color:var(--ac);color:var(--ac)}
+.link{background:none;border:0;padding:0;font:inherit;font-size:13px;color:var(--ac);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+code{background:var(--sunk);border:1px solid var(--rule2);padding:0 5px;border-radius:4px;font-size:12.5px}
+.hide{display:none!important}
+.err{background:var(--wabg);border:1px solid var(--wa);padding:12px 14px;border-radius:8px;white-space:pre-wrap;margin:0 24px 18px;font-size:14px}
+.warn{background:var(--wabg);border:1px solid var(--wa);padding:10px 14px;border-radius:8px;font-weight:600;margin-bottom:16px}
+.chip{cursor:pointer;display:inline-block;margin:3px 4px 3px 0;padding:2px 10px;border:1px solid var(--rule);border-radius:12px;font-size:12.5px;background:var(--surface);color:var(--ink)}
+.chip:hover{border-color:var(--ac);color:var(--ac)}
+.examples{margin-top:10px;font-size:13px;color:var(--mu);display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.examples .sep{width:1px;height:16px;background:var(--rule);margin:0 4px}
+
+/* model rows */
+.models .mr{display:grid;grid-template-columns:minmax(150px,200px) 1fr 1fr auto auto 32px;gap:8px;align-items:center;margin-top:8px}
+.models .mr .x{border:0;background:none;color:var(--mu);font-size:18px;cursor:pointer;padding:4px;border-radius:4px}
+.models .mr .x:hover{color:var(--wa)}
+.models .msg{grid-column:1/-1;font-size:12.5px;margin:-2px 0 2px}
+.models .msg.ok{color:var(--ok)}.models .msg.bad{color:var(--wa)}
+@media(max-width:820px){.models .mr{grid-template-columns:auto 1fr auto;padding:10px 0;border-bottom:1px solid var(--rule2)}.models .mr>select,.models .mr>input,.models .mr>span:empty{grid-column:1/-1}.models .mr>span:empty{display:none}.models .mr .x{justify-self:end}}
+.badge{font-size:12px;padding:1px 9px;border-radius:10px;border:1px solid var(--rule);color:var(--mu);white-space:nowrap;justify-self:start}
+.badge.g{background:var(--okbg);color:var(--ok);border-color:transparent}.badge.r{background:var(--wabg);color:var(--wa);border-color:transparent}
+details.help{margin-top:14px;font-size:14px}details.help summary{cursor:pointer;color:var(--ac);font-size:13.5px}
+.help-body{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:10px;padding:14px 16px;background:var(--sunk);border-radius:8px}
+.help-body ol{margin:6px 0 0 18px;padding:0}.help-body li{margin:3px 0}
+@media(max-width:700px){.help-body{grid-template-columns:1fr}}
+
+/* tooltip */
+.tip{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;border:1px solid var(--rule);color:var(--mu);font:600 11px/1 system-ui;cursor:help;position:relative;margin-left:6px;font-style:normal;vertical-align:1px;background:var(--surface)}
+.tip:hover::after,.tip:focus::after{content:attr(data-tip);position:absolute;left:50%;top:135%;transform:translateX(-50%);width:260px;background:var(--ink);color:var(--paper);padding:9px 11px;border-radius:6px;font:400 12.5px/1.45 "Public Sans",system-ui;z-index:20;white-space:normal;text-align:left}
+
+/* progress */
+.bar{height:6px;background:var(--rule2);border-radius:3px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ac);transition:width .3s}
+#prog{flex:1 1 260px}
+
+/* results */
+.big{font-size:19px;font-weight:600;line-height:1.4;margin:4px 0 12px;max-width:62ch}
+.lvl{border-left:3px solid;padding:8px 14px;margin:10px 0;font-size:14.5px;max-width:75ch}
+.lvl-low{border-color:var(--ok);background:var(--okbg)}.lvl-moderate{border-color:var(--am);background:var(--ambg)}.lvl-high{border-color:var(--wa);background:var(--wabg)}
+.dl{margin-top:14px;padding-top:12px;border-top:1px solid var(--rule2);display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13px}
+.dl .lead{color:var(--mu)}
+.mcs{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:0;border-top:1px solid var(--rule2);border-left:1px solid var(--rule2);margin-top:6px}
+.mc{border-right:1px solid var(--rule2);border-bottom:1px solid var(--rule2);padding:14px 16px;position:relative}
+.mc::before{content:"";position:absolute;left:0;top:14px;width:3px;height:30px;background:var(--sk);border-radius:0 2px 2px 0}
+.mc.g::before{background:var(--ok)}.mc.g2::before{background:var(--wording)}.mc.r::before{background:var(--wa)}.mc.a::before{background:var(--am)}
+.mn{font-size:13.5px;font-weight:600;color:var(--mu)}
+.mv{font-size:30px;font-weight:700;margin:2px 0 4px;letter-spacing:-.01em}.mv.long{font-size:17px;word-break:break-word;line-height:1.35;margin:6px 0}
+.mm{font-size:13px;color:var(--mu)}.mc details{margin-top:6px}.mc summary{font-size:12.5px;color:var(--ac);cursor:pointer}.mc p{margin:6px 0;font-size:13px}
+.ex{background:var(--sunk);border-radius:6px;padding:7px 9px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:18px}
+@media(max-width:860px){.two{grid-template-columns:1fr}}
+.two>.card{margin-bottom:0}.two{margin-bottom:18px}
+.hb{display:grid;grid-template-columns:minmax(120px,210px) 1fr 132px;align-items:center;gap:10px;margin:7px 0;font-size:13px}
+.hb .t{display:flex;height:14px;border-radius:3px;overflow:hidden;background:var(--rule2)}.hb .t i{display:block;height:100%}.hb .v{color:var(--mu);text-align:right}
+@media(max-width:600px){.hb{grid-template-columns:1fr 84px}.hb .l{grid-column:1/-1}}
+.c-agree{background:var(--ok)}.c-wording{background:var(--wording)}.c-unv{background:var(--am)}.c-dis{background:var(--wa)}.c-ex{background:var(--sk)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--mu);margin-top:12px}.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:7px 9px;border-bottom:1px solid var(--rule2);text-align:left;vertical-align:top}th{color:var(--mu);font-weight:600}
+.tw{overflow-x:auto}
+.pill{display:inline-block;padding:1px 9px;border-radius:10px;font-size:12px;font-weight:500;white-space:nowrap}
+.p-agree,.p-agreement{background:var(--okbg);color:var(--ok)}.p-disagreement{background:var(--wabg);color:var(--wa)}.p-unverified{background:var(--ambg);color:var(--am)}.p-excluded{background:var(--rule2);color:var(--mu)}
+.resp{border:1px solid var(--rule2);border-radius:6px;padding:8px 12px;margin:6px 0;background:var(--surface)}
+.resp .resp{background:var(--sunk)}.resp.d{border-color:var(--wa);border-left-width:3px}.resp b{font-size:13px}
+.resp pre{margin:4px 0 0;white-space:pre-wrap;font:13px/1.5 "Public Sans",system-ui}
+.why ul{padding-left:20px}.why li{margin:6px 0;max-width:80ch}
+details.card>summary{cursor:pointer;font-size:16px}
+.diag{overflow-x:auto}.diag svg{max-width:100%;height:auto}
+tr[data-i]:hover td{background:var(--sunk)}
+footer{padding:10px 0 40px;font-size:12.5px;color:var(--mu)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style></head><body>
+<div class="wrap">
+<header>
+<h1>Do AI models agree with each other?</h1>
+<p class="lede">Ask two or more AIs the same questions and see where their answers differ. Works with OpenAI, Gemini, Claude and local Ollama models.</p>
+<p class="byline">Rishabh Paul (F003), Aryan Pisal (F008) and Rishi Shah (F011)</p>
+</header>
+<main>
+<section id="run">
+<div class="panel">
+
+<div class="step"><span class="num">1</span><div>
+<h2>Choose your questions</h2><p class="sub">Every AI receives these word for word.</p>
+<div class="row"><label>Questions from<select id="mode"><option value="sample">5 Sample Questions</option><option value="csv">Upload a CSV file</option><option value="prompts">Type my own questions</option></select></label></div>
+<div id="m-sample" class="note" style="margin-top:10px">Five built-in reasoning questions, useful for trying the tool out. For your own analysis, upload a file or type questions.</div>
+<div id="m-csv" class="hide"><p class="note" style="margin:10px 0 0">A CSV with column names in the first row and one question per row (up to 2,000 rows). The smallest valid file has a single column called <code>prompt</code>.</p>
+<div class="row"><label>CSV file<input type="file" id="file" accept=".csv,text/csv"></label><span class="note" id="fileinfo"></span></div>
+<div class="examples">Or load an example:<button class="sm" data-ex="open_questions">6 open questions</button><button class="sm" data-ex="sentiment">6 product reviews</button><button class="sm" data-ex="prompts">6 prompts</button><span class="sep"></span>Download: <a href="/api/example/open_questions.csv">questions</a><a href="/api/example/sentiment_classification.csv">reviews</a><a href="/api/example/prompts_only.csv">prompts</a></div>
+<div id="map" class="hide"><h3>Build each question from your columns</h3><div id="chips" class="note"></div>
+<label style="margin-top:8px">Question template (click a column above to insert it), e.g. <code>Answer briefly: {question}</code><textarea id="tmpl" rows="3" placeholder="Answer in one sentence: {question}"></textarea></label>
+<div class="row"><label>Name column (optional)<select id="idcol"></select></label><label>Type of answer<select id="ttype"><option value="open">Free text</option><option value="classification">One of fixed choices</option></select></label>
+<label id="optl" class="hide">Choices, comma-separated<input id="opts" placeholder="yes, no, unsure" size="24"></label>
+<label>Human answers column (optional)<select id="vcol"></select></label><label>Correct-answer column (optional, shown only)<select id="rcol"></select></label></div>
+<div id="prev" class="tw" style="margin-top:12px"></div></div></div>
+<div id="m-prompts" class="hide"><label style="margin-top:10px">One question per line, or separate multi-line questions with a blank line<textarea id="ptxt" rows="5" placeholder="Is it ethical to ...?&#10;Summarise the causes of ..."></textarea></label></div>
+</div></div>
+
+<div class="step models"><span class="num">2</span><div>
+<h2>Choose the AIs to compare</h2>
+<p class="sub">Add two or more, up to eight. Three gives a clear majority, so you can see which one is the odd one out. You can use several Ollama models at once: add each one as its own row. Rows without a model name are ignored.</p>
+<div id="mrows"></div>
+<div class="row"><button class="sm" id="addm">Add a model</button><button class="sm" id="detect">Find my Ollama models</button><button class="link" id="usemock">Use practice AIs (simulated, for testing only)</button></div>
+<div id="olres" class="note" style="margin-top:8px"></div>
+<details class="help"><summary>How to set up Gemini or Ollama</summary><div class="help-body">
+<div><b>Gemini</b><ol><li>Get a free key at aistudio.google.com/app/apikey.</li><li>Add <code>GEMINI_API_KEY=your-key</code> to the <code>.env</code> file next to <code>main.py</code> and restart the server.</li><li>Add a row with provider Google Gemini and the model name from AI Studio, then click Test.</li></ol></div>
+<div><b>Ollama (free, runs on your computer)</b><ol><li>Install it from ollama.com/download and make sure it is running.</li><li>Download models in a terminal, e.g. <code>ollama pull &lt;model name&gt;</code>. Run <code>ollama list</code> to see what is installed.</li><li>Click Find my Ollama models and click each model you want to compare. Each click adds a row.</li></ol></div>
+</div><p class="note" style="margin:10px 0 0">Keys are best kept in <code>.env</code>. A key typed on this page is used for this run only and is never saved.</p></details>
+</div></div>
+
+<div class="step"><span class="num">3</span><div>
+<h2>Adjust settings</h2><p class="sub">The defaults work for a first run.</p>
+<div class="row">
+<label><span>Answers per AI per question<span class="tip" tabindex="0" data-tip="1 is enough to compare different AIs. Use 3 or more to also see whether each AI is consistent with itself.">i</span></span><input id="n" type="number" min="1" max="20" value="1" style="width:100px"></label>
+<label>Creativity (0 steady, 1 varied)<input id="temp" type="number" step="0.1" min="0" max="2" value="0.7" style="width:100px"></label>
+<label><span>Maximum answer length<span class="tip" tabindex="0" data-tip="Measured in tokens (roughly word pieces). 512 is about 350 words.">i</span></span><input id="mt" type="number" min="16" max="4096" value="512" style="width:100px"></label>
+</div></div></div>
+
+<div class="run-bar"><button class="btn" id="go">Compare the AIs</button><span class="note" id="est"></span>
+<div id="prog" class="hide"><div class="bar"><i id="pbar" style="width:0"></i></div><div class="note" id="pmsg" style="margin-top:6px"></div></div></div>
+<div id="err" class="err hide"></div>
+</div>
+
+<div id="out" class="hide"></div>
+</section></main>
+<footer>Agreement between AIs shows consistency, not correctness. Results are saved in the project's <code>runs</code> folder.</footer>
+</div>
+<script>
+const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pct=x=>x==null?'n/a':(100*x).toFixed(0)+'%';
+const PH={openai:'exact OpenAI model ID',gemini:'exact Gemini model ID',anthropic:'e.g. claude-haiku-5-5',ollama:'name from `ollama list`','ollama-cloud':'model ID from ollama.com/api/tags',mock:'model-A'};
+let csvText='',csvCols=[],serverKeys={},rows=[],cur=null,SAMPLE_N=5;
+/* ---------- models ---------- */
+const mrows=[{p:'openai',id:''},{p:'gemini',id:''},{p:'anthropic',id:''}];
+function drawModels(){$('mrows').innerHTML=mrows.map((r,i)=>`<div class="mr" data-i="${i}"><select data-k="p">${['openai','gemini','anthropic','ollama','ollama-cloud','mock'].map(p=>`<option value="${p}"${p==r.p?' selected':''}>${{openai:'OpenAI (ChatGPT)',gemini:'Google Gemini',anthropic:'Anthropic Claude',ollama:'Ollama (on this computer, no key)','ollama-cloud':'Ollama Cloud (API key)',mock:'Practice AI (simulated)'}[p]}</option>`).join('')}</select>
+<input data-k="id" value="${esc(r.id)}" placeholder="${PH[r.p]}">${r.p=='ollama'||r.p=='mock'?'<span></span>':`<input data-k="key" type="password" autocomplete="off" placeholder="API key ${serverKeys[r.p]?'(server key available)':'(or set in .env)'}" value="${esc(r.key||'')}">`}
+<button class="sm" data-a="test" title="Sends one tiny request to check your key and model name">Test</button><span class="badge ${r.st=='ok'?'g':r.st=='bad'?'r':''}" title="${esc(r.msg||'')}">${r.st=='ok'?'connected':r.st=='bad'?'failed':r.st=='busy'?'testing':r.p=='mock'?'simulated':r.p=='ollama'?'no key needed':serverKeys[r.p]?'key in .env':'no key yet'}</span><button class="x" data-a="del" aria-label="Remove this model" title="Remove">&times;</button>${r.msg&&r.st!='busy'?`<div class="msg ${r.st=='ok'?'ok':'bad'}">${esc(r.msg)}</div>`:''}</div>`).join('');
+ $('mrows').querySelectorAll('.mr').forEach(el=>{const i=+el.dataset.i;el.querySelectorAll('[data-k]').forEach(inp=>inp.oninput=()=>{mrows[i][inp.dataset.k]=inp.value;if(inp.dataset.k=='p'){mrows[i].st='';drawModels()}estimate()});
+  el.querySelector('[data-a=del]').onclick=()=>{mrows.splice(i,1);drawModels();estimate()};
+  el.querySelector('[data-a=test]').onclick=async()=>{const r=mrows[i];if(!r.id){r.st='bad';r.msg='Enter a model name first.';return drawModels()}r.st='busy';r.msg='';drawModels();
+   try{const d=await (await fetch('/api/test-model',{method:'POST',body:JSON.stringify({model:r.p+':'+r.id,key:r.key||null})})).json();r.st=d.ok?'ok':'bad';r.msg=d.message}catch(e){r.st='bad';r.msg='Could not reach the server: '+e.message}drawModels()}})}
+$('detect').onclick=async()=>{$('olres').textContent='Looking for Ollama...';let d;try{d=await (await fetch('/api/ollama/models')).json()}catch(e){d={ok:false,message:'Could not reach the server: '+e.message}}
+ $('olres').innerHTML=d.ok?(d.models.length?'Installed: '+d.models.map(m=>`<span class="chip" data-m="${esc(m)}">${esc(m)}</span>`).join('')+' Click each model to add it.':'Ollama is running but no model is installed yet. In a terminal run: <code>ollama pull &lt;model name&gt;</code>'):`<span style="color:var(--wa)">${esc(d.message)}</span>`;
+ $('olres').querySelectorAll('.chip').forEach(ch=>ch.onclick=()=>{if(mrows.some(r=>r.p=='ollama'&&r.id==ch.dataset.m))return;const e=mrows.findIndex(r=>!r.id||!r.id.trim());if(e>=0)mrows[e]={p:'ollama',id:ch.dataset.m};else mrows.push({p:'ollama',id:ch.dataset.m});drawModels();estimate()})};
+$('addm').onclick=()=>{mrows.push({p:'openai',id:''});drawModels()};
+$('usemock').onclick=()=>{mrows.length=0;['model-A','model-B','model-C'].forEach(n=>mrows.push({p:'mock',id:n}));drawModels();estimate()};
+fetch('/api/providers').then(r=>r.json()).then(d=>{serverKeys=d.server_keys;drawModels()}).catch(()=>drawModels());
+fetch('/api/sample').then(r=>r.text()).then(t=>{const n=t.trim().split(/\r?\n/).length-1;if(n>0){SAMPLE_N=n;estimate()}}).catch(()=>{});
+/* ---------- data ---------- */
+$('mode').onchange=()=>{['sample','csv','prompts'].forEach(m=>$('m-'+m).classList.toggle('hide',m!=$('mode').value));estimate()};
+$('ttype').onchange=()=>$('optl').classList.toggle('hide',$('ttype').value!='classification');
+$('ptxt').oninput=estimate;
+async function ingest(text,preset){csvText=text;$('fileinfo').textContent='';
+ const r=await fetch('/api/inspect',{method:'POST',body:JSON.stringify({csv:csvText})});const d=await r.json();
+ if(!r.ok){$('fileinfo').textContent=d.error;$('map').classList.add('hide');return}
+ csvCols=d.columns;$('fileinfo').textContent=`${d.n_rows} rows, ${d.columns.length} columns`;$('map').classList.remove('hide');window._n=d.n_rows;
+ $('chips').innerHTML='Columns: '+d.columns.map(c=>`<span class="chip" data-c="${esc(c)}">${esc(c)}</span>`).join('');
+ $('chips').querySelectorAll('.chip').forEach(ch=>ch.onclick=()=>{const t=$('tmpl');t.value+=`{${ch.dataset.c}}`;t.focus()});
+ const opt=(none)=>`<option value="">${none}</option>`+d.columns.map(c=>`<option>${esc(c)}</option>`).join('');
+ $('idcol').innerHTML=opt('(row number)');$('vcol').innerHTML=opt('(none)');$('rcol').innerHTML=opt('(none)');
+ $('prev').innerHTML='<table><tr>'+d.columns.map(c=>`<th>${esc(c)}</th>`).join('')+'</tr>'+d.preview.map(r=>'<tr>'+d.columns.map(c=>`<td>${esc((r[c]||'').slice(0,60))}</td>`).join('')+'</tr>').join('')+'</table>';
+ $('tmpl').value=preset?preset.template:(d.columns.length?`{${d.columns[0]}}`:'');
+ $('ttype').value=preset?preset.type:'open';$('ttype').onchange();$('opts').value=preset?preset.options||'':'';
+ if(preset){$('idcol').value=preset.id||'';$('rcol').value=preset.ref||''}estimate()}
+$('file').onchange=async()=>{const f=$('file').files[0];if(f)ingest(await f.text())};
+const EXAMPLES={open_questions:{file:'open_questions.csv',template:'{question}',type:'open',id:'id',ref:'reference'},
+ sentiment:{file:'sentiment_classification.csv',template:'Classify the sentiment of this product review: {review}',type:'classification',options:'positive, negative, neutral',id:'id'},
+ prompts:{file:'prompts_only.csv',template:'{prompt}',type:'open'}};
+document.querySelectorAll('[data-ex]').forEach(b=>b.onclick=async()=>{const ex=EXAMPLES[b.dataset.ex];const t=await (await fetch('/api/example/'+ex.file)).text();
+ await ingest(t,ex);$('fileinfo').textContent='example '+ex.file+': '+$('fileinfo').textContent});
+function nItems(){const m=$('mode').value;return m=='sample'?SAMPLE_N:m=='csv'?(window._n||0):($('ptxt').value.trim()?$('ptxt').value.trim().split(/\n\n|\n/).filter(x=>x.trim()).length:0)}
+function models(){return mrows.filter(r=>r.id&&r.id.trim()).map(r=>r.p+':'+r.id.trim())}
+function estimate(){const n=nItems(),m=models().length,s=+$('n').value||1;$('est').textContent=n&&m?`${n} questions x ${m} AIs x ${s} = ${n*m*s} requests will be sent`:''}
+['n'].forEach(i=>$(i).oninput=estimate);
+/* ---------- run ---------- */
+function payload(){const mode=$('mode').value,ks={};mrows.forEach(r=>{if(r.key&&r.key.trim()&&!ks[r.p])ks[r.p]=r.key.trim()});
+ return{data_mode:mode,models:models(),keys:ks,samples:+$('n').value,temperature:+$('temp').value,max_tokens:+$('mt').value,
+  csv:csvText,prompts:$('ptxt').value,mapping:{prompt_template:$('tmpl').value,id_column:$('idcol').value,task_type:$('ttype').value,options:$('opts').value,human_votes_column:$('vcol').value,reference_column:$('rcol').value}}}
+function showErr(m){$('err').textContent=m;$('err').classList.remove('hide')}
+$('go').onclick=async()=>{$('err').classList.add('hide');$('out').classList.add('hide');
+ if(!models().length)return showErr('Add at least one model: enter a model name in a row above, or use the practice AIs for a test run.');
+ $('go').disabled=true;$('prog').classList.remove('hide');$('pbar').style.width='2%';$('pmsg').textContent='starting...';
+ try{const r=await fetch('/api/run',{method:'POST',body:JSON.stringify(payload())});const d=await r.json();if(!r.ok)throw Error(d.error||'could not start');
+  const t=setInterval(async()=>{try{const j=await (await fetch('/api/job/'+d.job_id)).json();$('pbar').style.width=(j.progress*100)+'%';$('pmsg').textContent=`${STAGE[j.stage]||j.stage}${j.message?' - '+j.message:''}  (${Math.round(j.progress*100)}%)`;
+   if(j.status!='running'){clearInterval(t);$('go').disabled=false;$('prog').classList.add('hide');j.status=='done'?show(j.result):fail(j)}}catch(e){clearInterval(t);$('go').disabled=false;showErr('Lost contact with the server: '+e.message)}},700)}
+ catch(e){$('go').disabled=false;$('prog').classList.add('hide');showErr(e.message)}};
+const STAGE={queued:'Starting',configuring:'Checking your input',ready:'Input OK',querying:'Asking the AIs',normalizing:'Tidying the answers',evaluating:'Comparing the answers',detecting:'Measuring disagreement',reporting:'Saving results',done:'Done'};
+const ADVICE={invalid_input:'Fix the input or settings below and run again.',no_models:'None of the AIs returned a usable answer. Check your keys and model names (use each row\'s Test button) and your connection. Nothing was simulated.',internal:'Unexpected error. The state diagram shows where the run stopped.'};
+function fail(j){const e=j.error||{};showErr((e.message||'Run failed')+'\n\n'+(ADVICE[e.kind]||''));
+ if(e.details&&e.details.model_report)$('err').textContent+='\n\nPer model:\n'+Object.entries(e.details.model_report).map(([m,r])=>` - ${m}: ${r.disabled_reason||'no usable response'}`).join('\n');
+ if(j.svg){$('out').classList.remove('hide');$('out').innerHTML=`<div class="card diag"><h2>Where the run stopped</h2><p class="note">Green boxes were completed; the highlighted box is where it stopped.</p>${j.svg}</div>`}}
+/* ---------- dashboard ---------- */
+const CATCLS={consensus:'agree',wording_only:'agree',unverified_difference:'unverified',refusal_mismatch:'disagreement',majority_outlier:'disagreement',split_decision:'disagreement',not_comparable:'excluded'};
+const CATCOL={agree:'c-agree',unverified:'c-unv',disagreement:'c-dis',excluded:'c-ex'};
+const LBL=k=>(((cur&&cur.comparison.explain&&cur.comparison.explain.category_labels)||{})[k]||{}).label||k.replace(/_/g,' ');
+const nice=LBL;
+const tip=t=>`<span class="tip" tabindex="0" data-tip="${esc(t)}">i</span>`;
+const MCOL={agreement:'g',disagreement:'r',wording:'g2',unverified:'a'};
+function metricCard(m){return `<div class="mc ${MCOL[m.key]||''}"><div class="mn">${esc(m.name)}</div><div class="mv ${String(m.value).length>12?'long':''}">${esc(m.value)}</div><div class="mm">${esc(m.meaning)}</div>${(m.reading||m.example)?`<details><summary>How to read this number</summary>${m.reading?`<p>${esc(m.reading)}</p>`:''}${m.example?`<p class="ex"><b>Example from your data:</b> ${esc(m.example)}</p>`:''}</details>`:''}</div>`}
+function show(res){cur=res;const c=res.comparison,o=c.overall,ex=c.explain||{},s=res.summary,pr=c.pairs.filter(p=>p.n_items);let h='';
+ if(c.simulated)h+='<div class="warn">SIMULATED RUN - at least one AI is the practice (fake) simulator. These numbers only test the tool and say nothing about real AIs.</div>';
+ h+=`<div class="card"><h2>Summary</h2><p class="big">${esc(ex.headline||'')}</p>${ex.level?`<div class="lvl lvl-${ex.level.label}">${esc(ex.level.text)}</div>`:''}
+ ${(ex.model_notes||[]).length?`<h3>How the AIs differ</h3><ul>${ex.model_notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul>`:''}
+ <div class="dl"><span class="lead">Download</span>${[['report.html','full report (print it to save as PDF)'],['responses.csv','all answers'],['items.csv','per-question results'],['pairwise.csv','AI-vs-AI results'],['summary.json','summary'],['comparison.json','full data (JSON)'],['trace.json','state trace'],['std.drawio','state diagram (draw.io)']].map(([f,l])=>`<a href="/api/export/${res.run_id}/${f}">${l}</a>`).join('')}</div></div>`;
+ h+=`<div class="card"><h2>Key numbers ${tip('Each card shows the number, what it means in plain English, and an example from your own data.')}</h2><div class="mcs">${(ex.metrics||[]).map(metricCard).join('')}</div></div>`;
+ const tot=o.n_items||1,cats=Object.entries(o.category_counts).filter(([k,v])=>v);
+ h+=`<div class="two"><div class="card"><h2>Where do the AIs disagree? ${tip('Every question falls into exactly one group. Hover a group name for its meaning.')}</h2>${cats.map(([k,v])=>`<div class="hb"><span class="l" title="${esc((ex.category_labels||{})[k]?ex.category_labels[k].meaning:'')}">${esc(LBL(k))}</span><span class="t"><i class="${CATCOL[CATCLS[k]]}" style="width:${100*v/tot}%"></i></span><span class="v">${v} (${(100*v/tot).toFixed(0)}%)</span></div>`).join('')||'<p class="note">no questions</p>'}
+ <div class="legend"><span><i class="c-agree"></i>agree</span><span><i class="c-unv"></i>can't tell yet</span><span><i class="c-dis"></i>disagree</span><span><i class="c-ex"></i>not enough answers</span></div></div>
+ <div class="card"><h2>Pairwise disagreement ${tip('How often each two AIs differ, using only the questions both answered. The percentage is clear disagreement.')}</h2>${pr.map(p=>{const n=p.n_items,w=x=>100*x/n;return`<div class="hb"><span class="l">${esc(p.a)} vs ${esc(p.b)}</span><span class="t" title="identical ${p.identical}, same meaning/different words ${p.wording}, can't tell ${p.unverified}, disagree ${p.disagree}"><i class="c-agree" style="width:${w(p.identical)}%"></i><i class="c-wording" style="width:${w(p.wording)}%"></i><i class="c-unv" style="width:${w(p.unverified)}%"></i><i class="c-dis" style="width:${w(p.disagree)}%"></i></span><span class="v">${pct(p.disagree_pct)} (${n} questions)</span></div>`}).join('')||'<p class="note">Pairs need at least two AIs with answers.</p>'}
+ <div class="legend"><span><i class="c-agree"></i>identical</span><span><i class="c-wording"></i>same, different words</span><span><i class="c-unv"></i>can't tell yet</span><span><i class="c-dis"></i>disagree</span></div></div></div>`;
+ h+=`<div class="card why"><h2>Why might the AIs disagree? ${tip('Possible explanations that fit your results. They are not proven causes.')}</h2>${(ex.reasons||[]).length?`<ul>${ex.reasons.map(r=>`<li><b>${esc(r.reason)}</b> &mdash; ${esc(r.evidence)}</li>`).join('')}</ul><p class="note">${esc(ex.reasons_note||'')}</p>`:'<p>There was nothing to explain: no differences were found in this run.</p>'}
+ <h3>Why does disagreement matter?</h3><ul>${(ex.why_it_matters||[]).map(w=>`<li>${esc(w)}</li>`).join('')}</ul></div>`;
+ h+=`<div class="card"><h2>Examples by category</h2><p class="note">Real answers from this run, a few per category.</p>`+Object.keys(c.examples).filter(k=>c.examples[k].length).map(k=>`<h3><span class="pill p-${CATCLS[k]}">${esc(LBL(k))}</span> <span class="note">${esc((ex.category_labels||{})[k]?ex.category_labels[k].meaning:'')}</span></h3>${c.examples[k].map(id=>itemHtml(c.items.find(x=>x.item_id==id))).join('')}`).join('')+'</div>';
+ h+=`<div class="card"><h2>Look at individual questions</h2><div class="row"><label>Show<select id="flt"><option value="">All</option><option value="disagreement">Disagreement</option><option value="unverified">Can't tell yet</option><option value="agreement">Agreement</option><option value="excluded">Not enough answers</option></select></label><label>Search<input id="srch" placeholder="text in the question"></label></div><div id="itbl" style="margin-top:8px"></div></div>`;
+ h+=`<details class="card"><summary><b>Technical details</b> <span class="note">(for the curious: all the underlying metrics)</span></summary>
+ <h3>Underlying metrics</h3><div class="tw"><table><tr><th>Metric</th><th>Value</th><th>Meaning</th></tr>${(ex.technical||[]).map(t=>`<tr><td>${esc(t.name)}</td><td>${esc(t.value)}</td><td>${esc(t.meaning)}</td></tr>`).join('')}</table></div>
+ <h3>Models</h3><div class="tw"><table><tr><th>Model</th><th>Requests</th><th>OK</th><th>Refusals / blocked</th><th>Errors</th><th>Avg words</th><th>Odd one out on</th><th>Status</th></tr>`+
+ Object.entries(c.models).map(([m,x])=>{const r=(c.model_report||{})[m]||{};return`<tr><td>${esc(m)}${x.simulated?' <span class="badge r">simulated</span>':''}</td><td>${x.requests}</td><td>${x.ok}</td><td>${x.refusals}</td><td>${x.errors}</td><td>${x.mean_words??'-'}</td><td>${x.sole_dissenter_items}</td><td>${r.disabled_reason?`<span class="badge r" title="${esc(r.disabled_reason)}">disabled</span> ${esc(r.disabled_reason.slice(0,90))}`:'<span class="badge g">ok</span>'}</td></tr>`}).join('')+
+ Object.entries(c.model_report||{}).filter(([m])=>!c.models[m]).map(([m,r])=>`<tr><td>${esc(m)}</td><td colspan="6">-</td><td><span class="badge r">no answers</span> ${esc((r.disabled_reason||'').slice(0,120))}</td></tr>`).join('')+`</table></div>`;
+ const names=[...new Set(pr.flatMap(p=>[p.a,p.b]))];
+ if(pr.length>1)h+=`<h3>Pairwise matrix <span class="note">(clear disagreement %, 95% range)</span></h3><div class="tw"><table><tr><th></th>${names.map(m=>`<th>${esc(m)}</th>`).join('')}</tr>${names.map(a=>`<tr><th>${esc(a)}</th>${names.map(b=>{const p=pr.find(q=>(q.a==a&&q.b==b)||(q.a==b&&q.b==a));return a==b?'<td>-</td>':p?`<td style="background:rgba(217,83,79,${(p.disagree_pct*.6).toFixed(2)})">${pct(p.disagree_pct)} <span class="note">(${pct(p.disagree_ci95[0])}-${pct(p.disagree_ci95[1])})</span></td>`:'<td>n/a</td>'}).join('')}</tr>`).join('')}</table></div>`;
+ if(s.human_comparison){const k=s.human_comparison;h+=`<h3>Comparison with human labels <span class="note">(${k.n_items_with_human_votes} questions with human votes)</span></h3><div class="kpis"><div class="kpi"><b>${k.mean_js_divergence}</b><span>mean JS divergence (0 = same as humans)</span></div><div class="kpi"><b>${pct(k.majority_match_rate)}</b><span>AI majority = human majority</span></div><div class="kpi"><b>${k.n_overconfident}</b><span>overconfident (AI sure, humans split)</span></div></div>`}
+ h+=`<h3>State trace of this run <span class="note">(the pipeline steps this run went through)</span></h3><div class="diag">${res.svg}</div><div class="tw"><table style="margin-top:8px"><tr><th>#</th><th>from</th><th>event [condition]</th><th>to</th><th>note</th></tr>${res.diagram.trace.map(t=>`<tr><td>${t.seq}</td><td>${t.from}</td><td>${t.event}${t.guard?' ['+esc(t.guard)+']':''}</td><td>${t.to}</td><td>${esc(t.note)}</td></tr>`).join('')}</table></div></details>`;
+ $('out').innerHTML=h;$('out').classList.remove('hide');$('flt').onchange=$('srch').oninput=table;table();$('out').scrollIntoView({behavior:'smooth'})}
+function itemHtml(r){if(!r)return'';return`<div class="resp"><b>${esc(r.item_id)}</b> <span class="pill p-${r.group}">${nice(r.category)}</span><pre>${esc(r.prompt)}</pre>${Object.entries(r.answers).map(([m,a])=>`<div class="resp ${(r.dissenting_models||[]).includes(m)?'d':''}"><b>${esc(m)}</b>${a.status!='ok'?` <span class="badge ${a.status=='error'?'r':''}">${a.status}</span>`:''}<pre>${a.status=='error'?esc(a.error):esc(a.text)||'(empty)'}</pre></div>`).join('')}</div>`}
+function table(){const f=$('flt').value,q=$('srch').value.toLowerCase(),L=cur.comparison.items.filter(r=>(!f||r.group==f)&&(!q||r.prompt.toLowerCase().includes(q))).slice(0,300);
+ $('itbl').innerHTML=`<div class="tw"><table><tr><th>id</th><th>prompt</th><th>category</th><th>answers</th></tr>`+L.map((r,i)=>`<tr data-i="${i}" style="cursor:pointer"><td>${esc(r.item_id)}</td><td>${esc(r.prompt.slice(0,110))}</td><td><span class="pill p-${r.group}">${nice(r.category)}</span></td><td>${r.n_models_answered} AIs answered</td></tr><tr class="hide" id="x${i}"><td colspan="4">${itemHtml(r)}</td></tr>`).join('')+'</table></div>'+(L.length==300?'<p class="note">Showing the first 300; download items.csv for all.</p>':'');
+ $('itbl').querySelectorAll('tr[data-i]').forEach(tr=>tr.onclick=()=>$('x'+tr.dataset.i).classList.toggle('hide'))}
+</script></body></html>

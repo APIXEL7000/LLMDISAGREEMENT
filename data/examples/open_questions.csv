@@ -1,0 +1,7 @@
+id,question,reference
+Q01,What is the chemical symbol for sodium?,Na (objective)
+Q02,Should cities prioritize bike lanes over car parking? Give one reason.,Subjective; assess relevance and explanation
+Q03,What is one possible drawback of remote work?,Accept a relevant drawback (open-ended)
+Q04,Which weighs more: a kilogram of steel or a kilogram of feathers?,They weigh the same (objective)
+Q05,What is the best way to learn a new language?,No single correct answer (open-ended)
+Q06,What is 15% of 200?,30 (objective)

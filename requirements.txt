@@ -1,0 +1,7 @@
+# Runtime (the web server, API clients and tests use only the Python standard library otherwise)
+numpy>=1.24
+pandas>=2.0
+matplotlib>=3.7
+certifi>=2024.2.2
+# Optional, only for previewing the state diagram as an image during development:
+# cairosvg

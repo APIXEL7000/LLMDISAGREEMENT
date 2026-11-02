@@ -1,0 +1,6 @@
+id,task_type,instruction,text,options,human_votes,reference
+nli01,classification,Does the premise entail the hypothesis?,John did not deny taking the book. Hypothesis: John admitted taking the book.,entailment|neutral|contradiction,neutral:10,neutral
+nli02,classification,Does the premise entail the hypothesis?,Premise: The company increased its revenue but reported a net loss. Hypothesis: The company was profitable.,entailment|neutral|contradiction,contradiction:10,contradiction
+nli03,classification,Does the premise entail the hypothesis?,Some students passed the examination. Hypothesis: Most students passed the examination.,entailment|neutral|contradiction,neutral:10,neutral
+nli04,classification,Does the premise entail the hypothesis?,Every employee who completed the training received a certificate. Maya received a certificate. Hypothesis: Maya completed the training.,entailment|neutral|contradiction,neutral:10,neutral
+nli05,classification,Does the premise entail the hypothesis?,The road was wet this morning. Hypothesis: It rained last night.,entailment|neutral|contradiction,neutral:10,neutral

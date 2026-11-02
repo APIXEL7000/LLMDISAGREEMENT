@@ -1,0 +1,7 @@
+__pycache__/
+.venv/
+.env
+outputs/
+runs/
+*.jsonl
+.DS_Store
